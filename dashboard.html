@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sunskar Solar - CRM Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; margin: 0;}
+        .header { display: flex; justify-content: space-between; align-items: center; background: #0b2b53; color: white; padding: 15px 20px; border-radius: 8px; flex-wrap: wrap; gap: 10px;}
+        .header h2 { margin: 0; }
+        .btn { border: none; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 5px; color: white; }
+        .logout-btn { background: #dc3545; }
+        .add-lead-btn { background: #28a745; margin-right: 10px; }
+        .add-user-btn, .view-users-btn { background: #fcd814; color: #0b2b53; margin-right: 10px; display: none; }
+        
+        .summary-container { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
+        .summary-card { flex: 1; min-width: 120px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; border-bottom: 4px solid #ccc; cursor: pointer; transition: 0.3s;}
+        .summary-card:hover { transform: translateY(-3px); }
+        .summary-card h3 { margin: 0; font-size: 24px; color: #333; }
+        .summary-card p { margin: 5px 0 0; font-size: 14px; font-weight: bold; color: #666; }
+        .card-total { border-color: #0b2b53; }
+        .card-new { border-color: #17a2b8; }
+        .card-interested { border-color: #fcd814; }
+        .card-callback { border-color: #fd7e14; }
+        .card-converted { border-color: #28a745; }
+
+        .todays-task-section { margin-top: 25px; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.08); border-left: 5px solid #d35400; }
+        .todays-task-section h3 { margin-top: 0; color: #d35400; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px;}
+        .todays-table th { background: #fff3cd; color: #856404; }
+
+        .filter-section { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 25px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.05); align-items: center;}
+        .filter-section input, .filter-section select { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+        .search-box { flex: 2; min-width: 200px;}
+        .filter-group { display: flex; align-items: center; gap: 10px; }
+        .clear-btn { background: #6c757d; }
+        
+        table { width: 100%; background: white; margin-top: 10px; border-collapse: collapse; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; font-size: 14px;}
+        th { background: #e9ecef; color: #333; }
+        .update-btn { background: #0b2b53; color: white; padding: 6px 12px; border:none; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        .call-link { color: #28a745; font-weight: bold; text-decoration: none; font-size: 15px; display: inline-flex; align-items: center; gap: 5px;}
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000;}
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 350px; text-align: left; max-height: 85vh; overflow-y: auto;}
+        .modal-large { width: 600px; }
+        .modal input, .modal select, .modal textarea, .modal button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 5px; box-sizing: border-box; border: 1px solid #ccc; font-family: Arial;}
+        .close-btn { background: #dc3545; }
+        .save-btn { background: #0b2b53; margin-top: 15px; }
+        .readonly-input { background-color: #e9ecef; cursor: not-allowed; font-weight: bold; color: #0b2b53; border: 1px dashed #999 !important; }
+
+        .dynamic-field { display: none; background: #eef; padding: 10px; border-radius: 5px; border-left: 3px solid #0b2b53; margin-top: 10px;}
+        .remarks-text { font-size: 12px; color: #666; display: block; margin-top: 5px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cg-badge { background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px; vertical-align: super;}
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Sunskar CRM</h2>
+    <div>
+        <span id="welcomeMsg" style="margin-right: 15px; font-size: 1.1rem;"></span>
+        <button class="btn add-lead-btn" onclick="openAddLeadModal()">+ Add Lead</button>
+        <button id="viewUsersBtn" class="btn view-users-btn" onclick="openViewUsersModal()">👥 Team</button>
+        <button id="adminBtn" class="btn add-user-btn" onclick="openAddUserModal()">+ User</button>
+        <button class="btn logout-btn" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<div class="summary-container">
+    <div class="summary-card card-total" onclick="filterByCard('')"><h3 id="countTotal">0</h3><p>Total Leads</p></div>
+    <div class="summary-card card-new" onclick="filterByCard('new')"><h3 id="countNew">0</h3><p>New / Pending</p></div>
+    <div class="summary-card card-interested" onclick="filterByCard('site visit')"><h3 id="countInterested">0</h3><p>Site Visits</p></div>
+    <div class="summary-card card-callback" onclick="filterByCard('follow-up')"><h3 id="countCallback">0</h3><p>Follow-ups</p></div>
+    <div class="summary-card card-converted" onclick="filterByCard('converted')"><h3 id="countConverted">0</h3><p>Converted</p></div>
+</div>
+
+<div class="todays-task-section">
+    <h3>📌 Today's Follow-ups & Site Visits</h3>
+    <table class="todays-table">
+        <thead>
+            <tr><th>Customer Details</th><th>Contact & Source</th><th>Calling Status</th><th>Lead Status</th><th>Assigned To</th><th>Action</th></tr>
+        </thead>
+        <tbody id="todaysTasksBody">
+            <tr><td colspan="6" style="text-align: center; padding: 15px;">डेटा चेक किया जा रहा है...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<h3 style="margin-top: 30px; margin-bottom: -10px; color: #0b2b53;">📂 All Leads Database</h3>
+<div class="filter-section">
+    <input type="text" id="searchBox" class="search-box" placeholder="🔍 नाम, शहर, अभियान या मोबाइल नंबर से ढूँढें..." onkeyup="filterTable()">
+    
+    <div class="filter-group" id="userFilterContainer" style="display: none;">
+        <label>यूज़र:</label><select id="userFilter" onchange="filterTable()"><option value="">All Users</option></select>
+    </div>
+
+    <div class="filter-group">
+        <label>स्टेटस:</label>
+        <select id="statusFilter" onchange="filterTable()">
+            <option value="">All Status</option><option value="new">New Inquiry</option><option value="interested">Interested</option>
+            <option value="follow-up">Follow-up Required</option><option value="site visit">Site Visit Scheduled</option>
+            <option value="not answered">Not Answered</option><option value="converted">Converted</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label>डेट:</label><input type="date" id="dateFilter" onchange="filterTable()">
+    </div>
+    
+    <button class="btn clear-btn" onclick="clearFilters()">Clear Filters</button>
+</div>
+
+<table>
+    <thead>
+        <tr><th>Customer Details</th><th>Contact & Source</th><th>Calling Status</th><th>Lead Status</th><th>Assigned To</th><th>Action</th></tr>
+    </thead>
+    <tbody id="leadsTableBody">
+        <tr><td colspan="6" style="text-align: center; padding: 20px;">डेटा लोड हो रहा है...</td></tr>
+    </tbody>
+</table>
+
+<div id="addLeadModal" class="modal">
+    <div class="modal-content">
+        <h3 style="color: #0b2b53; margin-top: 0; text-align: center;">Add New Lead</h3>
+        <label>Customer Name *</label><input type="text" id="newLeadName" placeholder="Customer Name">
+        <label>Mobile Number *</label><input type="number" id="newLeadPhone" placeholder="Mobile Number">
+        <label>City / Village</label><input type="text" id="newLeadCity" placeholder="City">
+        
+        <label>Campaign Name</label><input type="text" id="newLeadCampaign" placeholder="e.g. Solar Lead2">
+        <label>Lead Source</label><input type="text" id="newLeadSource" placeholder="e.g. FB / Website">
+        <label>CG Resident?</label>
+        <select id="newLeadCG"><option value="">No / Select</option><option value="yes">Yes</option></select>
+
+        <label style="margin-top: 10px;">Calling Status</label>
+        <select id="newLeadCalling">
+            <option value="New">New</option><option value="Follow-up Required">Follow-up Required</option>
+            <option value="Site Visit Scheduled">Site Visit Scheduled</option><option value="Converted">Converted</option>
+        </select>
+        <label>Assign To</label>
+        <select id="newLeadAssign"><option value="">Self (मुझे)</option></select>
+        
+        <button class="btn save-btn" onclick="saveNewLead()">ADD LEAD</button>
+        <button class="btn close-btn" onclick="closeModal('addLeadModal')">CANCEL</button>
+        <p id="addLeadMsg" style="font-weight: bold; margin-top: 10px; text-align: center;"></p>
+    </div>
+</div>
+
+<div id="updateModal" class="modal">
+    <div class="modal-content" style="text-align: center;">
+        <h3 style="color: #0b2b53; margin-top: 0;">Update Lead Status</h3>
+        <p style="color: #555; font-size: 0.9rem;">Row Number: <strong id="currentRow"></strong></p>
+        
+        <label style="font-weight:bold; color:#0b2b53; text-align:left; display:block;">📞 Calling Status</label>
+        <select id="updateCallingStatus" onchange="handleSmartFields()">
+            <option value="New">New</option><option value="Ringing">Ringing / Not Answered</option>
+            <option value="Follow-up Required">Follow-up Required</option>
+            <option value="Site Visit Scheduled">Site Visit Scheduled</option>
+            <option value="Not Interested">Not Interested</option>
+        </select>
+
+        <div id="followUpDiv" class="dynamic-field"><label style="font-weight:bold; color:#d35400; text-align:left; display:block;">⏰ Follow-up Date & Time</label><input type="datetime-local" id="updateFollowUpDate"></div>
+        <div id="siteVisitDiv" class="dynamic-field"><label style="font-weight:bold; color:#28a745; text-align:left; display:block;">🗓️ Site Visit Date & Time</label><input type="datetime-local" id="updateSiteVisitDate"></div>
+
+        <label style="font-weight:bold; color:#0b2b53; margin-top:15px; display:block; text-align:left;">🔥 Lead Status</label>
+        <select id="updateLeadStatus">
+            <option value="New Inquiry">New Inquiry</option><option value="Cold">Cold</option>
+            <option value="Warm">Warm</option><option value="Hot">Hot (Ready to close)</option>
+            <option value="Converted">Converted (Deal Done!)</option><option value="Dead">Dead / Lost</option>
+            <option value="Site Visit Scheduled">Site Visit Scheduled</option>
+        </select>
+
+        <label style="font-weight:bold; color:#0b2b53; margin-top:15px; display:block; text-align:left;">📝 Remarks / Notes</label>
+        <textarea id="updateRemarks" rows="3" placeholder="कस्टमर ने क्या कहा? यहाँ लिखें..."></textarea>
+        
+        <button class="btn save-btn" onclick="saveLeadData()">SAVE UPDATE</button>
+        <button class="btn close-btn" onclick="closeModal('updateModal')">CANCEL</button>
+        <p id="updateMsg" style="font-weight: bold; margin-top: 10px;"></p>
+    </div>
+</div>
+
+<div id="addUserModal" class="modal"><div class="modal-content"><h3 style="color: #0b2b53; margin-top: 0; text-align: center;">Create New User</h3><input type="text" id="addEmpName" placeholder="E.g. Rahul Sharma" onkeyup="updateAutoCredentials()"><input type="text" id="addUsername" class="readonly-input" readonly placeholder="Auto Generated"><input type="text" id="addPassword" class="readonly-input" readonly placeholder="Auto Generated"><select id="addRole"><option value="Telecaller">Telecaller</option><option value="Manager">Manager</option><option value="Admin">Admin</option></select><input type="text" id="addPhone" placeholder="Mobile Number"><button class="btn save-btn" onclick="saveNewUser()">CREATE USER</button><button class="btn close-btn" onclick="closeModal('addUserModal')">CANCEL</button><p id="addUserMsg" style="font-weight: bold; margin-top: 10px; text-align: center;"></p></div></div>
+<div id="viewUsersModal" class="modal"><div class="modal-content modal-large"><h3 style="color: #0b2b53; margin-top: 0; text-align: center;">Team Members</h3><table><thead><tr><th>Name</th><th>Username</th><th>Password</th><th>Role</th></tr></thead><tbody id="usersListBody"><tr><td colspan="4" style="text-align: center;">Loading...</td></tr></tbody></table><button class="btn close-btn" onclick="closeModal('viewUsersModal')" style="margin-top: 20px;">CLOSE</button></div></div>
+
+<script>
+    var empName = localStorage.getItem("empName"); var userRole = localStorage.getItem("userRole");
+    if (!empName || !userRole) { window.location.href = "login.html"; } 
+    else {
+        document.getElementById("welcomeMsg").innerText = "Welcome, " + empName;
+        if (userRole.toLowerCase() === "admin" || userRole.toLowerCase() === "manager") {
+            document.getElementById("adminBtn").style.display = "inline-block"; document.getElementById("viewUsersBtn").style.display = "inline-block"; document.getElementById("userFilterContainer").style.display = "flex"; 
+        }
+        loadLeads(); 
+    }
+
+    // 🚨 APNA NAYA URL YAHAN DAALEIN!
+    var API_URL = "https://script.google.com/macros/s/AKfycbzm8fI93prI4e3V99AiwbAZAc7IYauubuBALQzxC-zgz4e62iNxbhH82-URMFKhpAmH/exec"; 
+
+    function fetchFromGAS(payload) {
+        return fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+        .then(response => response.json());
+    }
+
+    function loadLeads() {
+        var tbody = document.getElementById("leadsTableBody"); var todayTbody = document.getElementById("todaysTasksBody");
+        var payload = { "action": "getLeads", "employeeName": empName, "role": userRole };
+
+        var todayDate = new Date(); var dd = String(todayDate.getDate()).padStart(2, '0'); var mm = String(todayDate.getMonth() + 1).padStart(2, '0'); var yyyy = todayDate.getFullYear();
+        var todayStr = yyyy + '-' + mm + '-' + dd;
+
+        fetchFromGAS(payload)
+        .then(data => {
+            tbody.innerHTML = ""; todayTbody.innerHTML = ""; 
+            var uniqueUsers = new Set(); var cTotal = 0, cNew = 0, cInterested = 0, cCallback = 0, cConverted = 0, cTodayTasks = 0;
+
+            if (data.status === "Success" && data.data && data.data.length > 0) {
+                for (var i = 0; i < data.data.length; i++) {
+                    var l = data.data[i];
+                    var assignedTo = l.assignedTo || "Unassigned";
+                    if(assignedTo !== "Unassigned" && assignedTo !== "") uniqueUsers.add(assignedTo);
+
+                    cTotal++; let csL = l.callingStatus.toLowerCase(); let lsL = l.leadStatus.toLowerCase();
+                    if(csL.includes("new") || csL === "") cNew++;
+                    if(csL.includes("site visit") || lsL.includes("site visit")) cInterested++;
+                    if(csL.includes("follow-up")) cCallback++;
+                    if(lsL.includes("converted")) cConverted++;
+
+                    // Customizing Text Output for Beautiful Table
+                    var cgBadge = l.cgResident.toLowerCase() === 'yes' ? `<span class="cg-badge">CG</span>` : '';
+                    var custDetails = `<strong>${l.customerName}</strong> ${cgBadge}<br><span style="font-size:11px; color:#888;">📅 ${l.createdTime}</span>`;
+                    
+                    var phoneLink = `<a href="tel:${l.phone}" class="call-link">📞 ${l.phone}</a><br><span style="font-size:11px; color:#555;">🏙️ ${l.city} | 📢 ${l.campaignName}</span>`;
+
+                    var fDateInput = l.followUpDate ? l.followUpDate.replace(" ", "T") : "";
+                    var svDateInput = l.siteVisitDate ? l.siteVisitDate.replace(" ", "T") : "";
+                    var fDateOnly = l.followUpDate.split(" ")[0]; 
+                    var svDateOnly = l.siteVisitDate.split(" ")[0];
+
+                    var svText = l.siteVisitDate ? `<br><span style="color:#28a745; font-size:12px;">🗓️ SV: ${l.siteVisitDate}</span>` : "";
+                    var fuText = l.followUpDate ? `<br><span style="color:#d35400; font-size:12px;">⏰ FU: ${l.followUpDate}</span>` : "";
+
+                    var trHtml = `
+                        <td class="col-name">${custDetails}</td>
+                        <td class="col-phone">${phoneLink}</td>
+                        <td class="col-cstatus"><span style="color:#0b2b53; font-weight:bold;">${l.callingStatus}</span>${fuText}</td>
+                        <td class="col-lstatus"><span style="color:#d35400; font-weight:bold;">${l.leadStatus}</span>${svText}<span class="remarks-text">📝 ${l.remarks || '-'}</span></td>
+                        <td class="col-assigned">${assignedTo}</td>
+                        <td><button class="update-btn" onclick="editLead(${l.rowNumber}, '${l.callingStatus}', '${l.leadStatus}', \`${l.remarks}\`, '${fDateInput}', '${svDateInput}')">✏️ Update</button></td>
+                    `;
+
+                    var tr = document.createElement("tr"); tr.className = "lead-row"; tr.innerHTML = trHtml;
+                    tbody.appendChild(tr);
+
+                    if((fDateOnly === todayStr || svDateOnly === todayStr) && !lsL.includes("converted") && !lsL.includes("dead")) {
+                        cTodayTasks++;
+                        var trToday = document.createElement("tr"); trToday.innerHTML = trHtml;
+                        todayTbody.appendChild(trToday);
+                    }
+                }
+
+                if(cTodayTasks === 0) { todayTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: green; font-weight:bold; padding: 15px;">🎉 बहुत बढ़िया! आज के लिए कोई पेंडिंग टास्क या साइट विज़िट नहीं है।</td></tr>'; }
+
+                document.getElementById("countTotal").innerText = cTotal; document.getElementById("countNew").innerText = cNew;
+                document.getElementById("countInterested").innerText = cInterested; document.getElementById("countCallback").innerText = cCallback; document.getElementById("countConverted").innerText = cConverted;
+
+                if (userRole.toLowerCase() === "admin" || userRole.toLowerCase() === "manager") {
+                    var userSelect = document.getElementById("userFilter"); var assignSelect = document.getElementById("newLeadAssign");
+                    userSelect.innerHTML = '<option value="">All Users</option>'; assignSelect.innerHTML = '<option value="">Self (मुझे)</option>';
+                    uniqueUsers.forEach(user => { userSelect.innerHTML += `<option value="${user.toLowerCase()}">${user}</option>`; assignSelect.innerHTML += `<option value="${user}">${user}</option>`; });
+                }
+            } else { tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">⚠ कोई डेटा नहीं मिला</td></tr>'; todayTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">⚠ कोई डेटा नहीं मिला</td></tr>'; }
+        }).catch(err => { tbody.innerHTML = `<tr><td colspan="6" style="color:red; text-align:center;">❌ Live Server Blocked Error.</td></tr>`; });
+    }
+
+    function handleSmartFields() {
+        var status = document.getElementById("updateCallingStatus").value;
+        document.getElementById("followUpDiv").style.display = (status === "Follow-up Required") ? "block" : "none";
+        document.getElementById("siteVisitDiv").style.display = (status === "Site Visit Scheduled") ? "block" : "none";
+    }
+
+    function filterTable() {
+        var searchVal = document.getElementById("searchBox").value.toLowerCase();
+        var dateVal = document.getElementById("dateFilter").value; 
+        var userVal = document.getElementById("userFilter") ? document.getElementById("userFilter").value.toLowerCase() : ""; 
+        var statusVal = document.getElementById("statusFilter").value.toLowerCase(); 
+
+        var trs = document.getElementsByClassName("lead-row");
+        for (var i = 0; i < trs.length; i++) {
+            var fullText = trs[i].innerText.toLowerCase();
+            var assigned = trs[i].querySelector(".col-assigned").innerText.toLowerCase();
+
+            var matchSearch = fullText.includes(searchVal);
+            var matchDate = (dateVal === "" || fullText.includes(dateVal));
+            var matchUser = (userVal === "" || assigned === userVal);
+            var matchStatus = (statusVal === "" || fullText.includes(statusVal));
+
+            if (matchSearch && matchDate && matchUser && matchStatus) { trs[i].style.display = ""; } 
+            else { trs[i].style.display = "none"; }
+        }
+    }
+
+    function clearFilters() { document.getElementById("searchBox").value = ""; document.getElementById("dateFilter").value = ""; if(document.getElementById("userFilter")) document.getElementById("userFilter").value = ""; document.getElementById("statusFilter").value = ""; filterTable(); }
+    function filterByCard(status) { clearFilters(); document.getElementById("statusFilter").value = status; filterTable(); }
+    function closeModal(modalId) { document.getElementById(modalId).style.display = "none"; }
+    function logout() { localStorage.clear(); window.location.href = "login.html"; }
+
+    function openAddLeadModal() { document.getElementById("addLeadModal").style.display = "flex"; document.getElementById("addLeadMsg").innerText = ""; document.getElementById("newLeadName").value = ""; document.getElementById("newLeadPhone").value = ""; document.getElementById("newLeadCity").value = ""; document.getElementById("newLeadCampaign").value = ""; document.getElementById("newLeadSource").value = ""; document.getElementById("newLeadCG").value = "";}
+    function saveNewLead() {
+        var name = document.getElementById("newLeadName").value; var phone = document.getElementById("newLeadPhone").value; var city = document.getElementById("newLeadCity").value; 
+        var cStatus = document.getElementById("newLeadCalling").value; var assign = document.getElementById("newLeadAssign").value; 
+        var camp = document.getElementById("newLeadCampaign").value; var src = document.getElementById("newLeadSource").value; var cg = document.getElementById("newLeadCG").value;
+        var msgBox = document.getElementById("addLeadMsg");
+        
+        if(!name || !phone) { msgBox.style.color = "red"; msgBox.innerText = "Name and Phone are required!"; return; }
+        msgBox.innerText = "Adding Lead..."; msgBox.style.color = "blue";
+        fetchFromGAS({ action: "addNewLead", name: name, phone: phone, city: city, callingStatus: cStatus, campaign: camp, source: src, cgResident: cg, assignedTo: assign, employeeName: empName }).then(data => { if(data.status === "Success") { msgBox.style.color = "green"; msgBox.innerText = "✓ Lead Added!"; setTimeout(() => { closeModal('addLeadModal'); loadLeads(); }, 1500); } });
+    }
+
+    function editLead(rowNumber, currentCalling, currentLead, currentRemarks, fDate, svDate) {
+        document.getElementById("currentRow").innerText = rowNumber; document.getElementById("updateCallingStatus").value = currentCalling || "New"; 
+        
+        // Ensure dropdown accepts the value or defaults to New Inquiry
+        let leadSel = document.getElementById("updateLeadStatus");
+        if(Array.from(leadSel.options).some(opt => opt.value === currentLead)) { leadSel.value = currentLead; } 
+        else { leadSel.value = "New Inquiry"; }
+
+        document.getElementById("updateRemarks").value = currentRemarks || ""; document.getElementById("updateFollowUpDate").value = fDate || ""; document.getElementById("updateSiteVisitDate").value = svDate || "";
+        handleSmartFields(); document.getElementById("updateModal").style.display = "flex"; document.getElementById("updateMsg").innerText = ""; 
+    }
+    
+    function saveLeadData() {
+        var rowNum = document.getElementById("currentRow").innerText; var cStatus = document.getElementById("updateCallingStatus").value; var lStatus = document.getElementById("updateLeadStatus").value; var remarks = document.getElementById("updateRemarks").value; var fDateVal = document.getElementById("updateFollowUpDate").value; var svDateVal = document.getElementById("updateSiteVisitDate").value; var msgBox = document.getElementById("updateMsg");
+        msgBox.innerText = "Saving & Syncing..."; msgBox.style.color = "blue";
+        fetchFromGAS({ action: "updateLead", row: parseInt(rowNum), callingStatus: cStatus, leadStatus: lStatus, remarks: remarks, fDate: fDateVal, svDate: svDateVal, employeeName: empName }).then(data => { if(data.status === "Success") { msgBox.style.color = "green"; msgBox.innerText = "✓ " + data.message; setTimeout(() => { closeModal('updateModal'); loadLeads(); }, 1000); } });
+    }
+
+    var randomPassCode = ""; function openAddUserModal() { document.getElementById("addUserModal").style.display = "flex"; document.getElementById("addUserMsg").innerText = ""; randomPassCode = Math.floor(1000 + Math.random() * 9000); document.getElementById("addEmpName").value = ""; document.getElementById("addUsername").value = ""; document.getElementById("addPassword").value = ""; document.getElementById("addPhone").value = ""; }
+    function updateAutoCredentials() { var fullName = document.getElementById("addEmpName").value.trim(); if(fullName.length > 0) { var firstName = fullName.split(" ")[0].toLowerCase(); document.getElementById("addUsername").value = firstName + randomPassCode; document.getElementById("addPassword").value = "Sunskar@" + randomPassCode; } else { document.getElementById("addUsername").value = ""; document.getElementById("addPassword").value = ""; } }
+    function saveNewUser() { var name = document.getElementById("addEmpName").value; var user = document.getElementById("addUsername").value; var pass = document.getElementById("addPassword").value; var role = document.getElementById("addRole").value; var phone = document.getElementById("addPhone").value; var msgBox = document.getElementById("addUserMsg"); if(name === "") { msgBox.style.color = "red"; msgBox.innerText = "Employee Name ज़रूरी है!"; return; } msgBox.innerText = "Creating User..."; msgBox.style.color = "blue"; fetchFromGAS({ "action": "addUser", "newEmpName": name, "newUsername": user, "newPassword": pass, "newRole": role, "newPhone": phone }).then(data => { if(data.status === "Success") { msgBox.style.color = "green"; msgBox.innerHTML = `✓ User Created!<br>ID: ${user}<br>Pass: ${pass}`; setTimeout(() => { closeModal('addUserModal'); }, 4000); } }); }
+    function openViewUsersModal() { document.getElementById("viewUsersModal").style.display = "flex"; var tbody = document.getElementById("usersListBody"); tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Loading Team...</td></tr>'; fetchFromGAS({ "action": "getUsers" }).then(data => { tbody.innerHTML = ""; if (data.status === "Success" && data.data && data.data.length > 0) { for (var i = 0; i < data.data.length; i++) { var tr = document.createElement("tr"); tr.innerHTML = `<td>${data.data[i].name}</td><td><strong>${data.data[i].username}</strong></td><td style="color: #dc3545;">${data.data[i].password}</td><td>${data.data[i].role}</td>`; tbody.appendChild(tr); } } else { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No users found.</td></tr>'; } }); }
+</script>
+</body>
+</html>
